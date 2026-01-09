@@ -46,3 +46,87 @@ select * from zanr order by id;
 - vraci datum a cas
 
 MOCKAROO - generovani zaznamu do tabulky
+
+create database priklady;
+use priklady;
+-- selfreference 1:n, hierarchie
+create table zam(
+id int primary key identity(1,1),
+pozice varchar(20),
+prijmeni varchar(20),
+nadrizeny_id int foreign key references zam(id)
+);
+select*from zam;
+-- vypis nadrizene a jejich prime podrizene
+select concat(nadrizeny.pozice,': ',nadrizeny.prijmeni) as vedouci,
+concat(podrizeny.pozice,': ',podrizeny.prijmeni) as podrizeny
+from zam as nadrizeny inner join zam as podrizeny on nadrizeny.id =podrizeny.nadrizeny_id;
+
+-- selreference m:n, zapasy mezi tymy
+create table tym(
+id int primary key identity(1,1),
+nazev varchar(20) not null unique
+)
+insert into tym(nazev) values('plzen'),('jablonec'),('banik'),('SPARTA'),('sesivky')
+
+create table zapas(
+id int primary key identity(1,1),
+domaci_tym_id int foreign key references tym(id),
+host_tym_id int foreign key references tym(id),
+datum date,
+vysledek varchar(20),
+domaci_body int check(domaci_body in(3,1,0)),
+check (domaci_tym_id != host_tym_id)
+)
+
+-- vypis tymu(domaci,host),datum,vysledek a domaci_body
+select domaci.nazev, host.nazev, zapas.datum, zapas.vysledek, zapas.domaci_body
+from tym as domaci inner join zapas on domaci.id =zapas.domaci_tym_id
+inner join tym as host on host.id = zapas.host_tym_id;
+
+-- vypiste totez, ale pridejte body, ktere ziskali hoste
+-- body hostu jsou komplement k bodum domacich
+select domaci.nazev, host.nazev, zapas.datum, zapas.vysledek, zapas.domaci_body, case when zapas.domaci_body=3 then 0 when zapas.domaci_body=0 then 3
+when zapas.domaci_body=1 then 1 end as hoste_body
+from tym as domaci inner join zapas on domaci.id =zapas.domaci_tym_id
+inner join tym as host on host.id = zapas.host_tym_id;
+
+-- vypise celkovy pocet bodu pro kazdy tym ziskany doma
+
+select domaci.nazev, sum(zapas.domaci_body) as body_doma_celkem
+from tym as domaci inner join zapas on domaci.id =zapas.domaci_tym_id
+inner join tym as host on host.id = zapas.host_tym_id
+group by domaci.nazev;
+
+-- vypiste celkovy pocet bodu pro kazdy tym ziskany venku
+
+select host.nazev, sum(case when zapas.domaci_body=3 then 0 when zapas.domaci_body=0 then 3
+when zapas.domaci_body=1 then 1 end) as body_venku_celkem
+from tym as domaci inner join zapas on domaci.id =zapas.domaci_tym_id
+inner join tym as host on host.id = zapas.host_tym_id
+group by host.nazev;
+
+-- celkovy zisk bodu = venku+doma
+select nazev, sum(body)as body_celkem
+from(
+
+-- vypise celkovy pocet bodu pro kazdy tym ziskany doma
+select domaci.nazev, sum(zapas.domaci_body) as body
+from tym as domaci inner join zapas on domaci.id =zapas.domaci_tym_id
+inner join tym as host on host.id = zapas.host_tym_id
+group by domaci.nazev
+
+union all 
+
+-- vypiste celkovy pocet bodu pro kazdy tym ziskany venku
+select host.nazev, sum(case when zapas.domaci_body=3 then 0 when zapas.domaci_body=0 then 3
+when zapas.domaci_body=1 then 1 end) as body
+from tym as domaci inner join zapas on domaci.id =zapas.domaci_tym_id
+inner join tym as host on host.id = zapas.host_tym_id
+group by host.nazev
+
+) as vysledek_celkem
+group by nazev
+order by body_celkem desc;
+
+
