@@ -129,4 +129,81 @@ group by host.nazev
 group by nazev
 order by body_celkem desc;
 
+-- Vozidla
+
+create table Typ_paliva(
+id int primary key identity(1,1),
+nazev varchar(20)not null unique,
+)
+
+create table Typ_auta(
+id int primary key identity(1,1),
+nazev varchar(20)not null unique,
+)
+
+create table Vuz(
+id int primary key identity(1,1),
+typ_auta_id int not null foreign key references Typ_Auta(id),
+typ_paliva_id int not null foreign key references Typ_paliva(id),
+nosnost int not null check(nosnost between 200 and 2400),
+datum_vyroby date not null check(year(datum_vyroby)>2000),
+spotreba int not null,
+stav char(1) not null check(stav in ('A','B','C'))
+)
+
+create table Jizda(
+id int primary key identity(1,1),
+vuz_id int not null foreign key references Vuz(id),
+datum date not null,
+hodina int not null check(hodina between 0 and 24),
+tachometr_start int not null,
+tachometr_end int not null,
+doba_jizdy int not null check(doba_jizdy>0),
+check(tachometr_end>tachometr_start)
+)
+
+create table doplneni_paliva(
+id int primary key identity(1,1),
+jizda_id int not null foreign key references Jizda(id),
+datum date not null,
+hodina int not null check(hodina between 0 and 24),
+mnozstvi int not null check(mnozstvi>0)
+)
+
+-- Typ_paliva
+insert into Typ_paliva (nazev) values
+('Benzin'),
+('Nafta'),
+('Elektro');
+
+-- Typ_auta
+insert into Typ_auta (nazev) values
+('Osobni'),
+('Dodavka'),
+('Nakladni');
+
+-- Vuz
+insert into Vuz (typ_auta_id, typ_paliva_id, nosnost, datum_vyroby, spotreba, stav) values
+(1, 1, 500,  '2015-06-10', 7,  'A'),
+(2, 2, 1200, '2018-03-22', 9,  'B'),
+(3, 3, 2000, '2021-11-05', 0,  'A');
+
+-- Jizda
+insert into Jizda (vuz_id, datum, hodina, tachometr_start, tachometr_end, doba_jizdy) values
+(1, '2023-05-10', 8,  15000, 15080, 90),
+(2, '2023-05-11', 14, 82000, 82120, 120),
+(3, '2023-05-12', 6,  30000, 30150, 180);
+
+-- doplneni_paliva
+insert into doplneni_paliva (jizda_id, datum, hodina, mnozstvi) values
+(1, '2023-05-10', 10, 40),
+(2, '2023-05-11', 16, 60),
+(3, '2023-05-12', 9,  30);
+
+
+-- vypis vsechny jizdy vcetne vozu, typu, paliva a jeho doplneni
+
+select * from Vuz inner join Typ_auta  on Typ_auta.id = Vuz.typ_auta_id where Typ_auta.nazev = 'nakladni' and year(datum_vyroby)>2015 and nosnost>10000
+
+select Jizda.id, Typ_auta.nazev, (Jizda.tachometr_end-Jizda.tachometr_start) as ujeto from Jizda inner join Vuz on Vuz.id = Jizda.vuz_id inner join Typ_auta on Typ_auta.id = Vuz.typ_auta_id
 
