@@ -234,3 +234,28 @@ go
 execute pridat_adresu 'kos@gmail.com';
 select*from email;
 
+-- uprava procedury, pridani vystup. param. jako zpravy
+go
+alter procedure pridat_adresu @adresa varchar(50),
+@vysledek varchar(100) output
+as
+begin
+	set @adresa = lower(@adresa);
+	if exists(select*from email where adresa = @adresa)
+		begin
+			set @vysledek = 'error - adresa je jiz v seznamu';
+		end
+	else
+		begin
+			insert into email(adresa,datum) values (@adresa,GETDATE());
+			set @vysledek = 'OK - adresa byla uspesne pridana';
+		end
+end
+go
+-- spusteni s vystupnim param.
+-- vsechny najednou
+declare @zprava varchar(100); -- promenna pro ulozeni vysledku z procedury
+execute pridat_adresu 'novak@gmail.com', @vysledek = @zprava output;
+select @zprava as zprava
+
+select*from email
