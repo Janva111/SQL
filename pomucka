@@ -207,3 +207,30 @@ select * from Vuz inner join Typ_auta  on Typ_auta.id = Vuz.typ_auta_id where Ty
 
 select Jizda.id, Typ_auta.nazev, (Jizda.tachometr_end-Jizda.tachometr_start) as ujeto from Jizda inner join Vuz on Vuz.id = Jizda.vuz_id inner join Typ_auta on Typ_auta.id = Vuz.typ_auta_id
 
+-- Procedury
+
+create database adresar
+use adresar
+
+create table email(
+id int primary key identity(1,1),
+adresa varchar(50) not null check(adresa like'%@%'),
+datum datetime not null
+)
+
+go
+create procedure pridat_adresu @adresa varchar(50)
+as
+begin
+	set @adresa = lower(@adresa);
+	if not exists(select*from email where adresa = @adresa)
+	begin
+	insert into email(adresa,datum) values (@adresa,GETDATE());
+	end
+end
+go
+
+-- spusteni procedury
+execute pridat_adresu 'kos@gmail.com';
+select*from email;
+
