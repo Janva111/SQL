@@ -258,4 +258,137 @@ declare @zprava varchar(100); -- promenna pro ulozeni vysledku z procedury
 execute pridat_adresu 'novak@gmail.com', @vysledek = @zprava output;
 select @zprava as zprava
 
+create database Podnik
+use Podnik
+
+create table zamestnanec(
+id int primary key identity(1,1),
+prijmeni varchar(20) not null,
+plat int not null,
+brigadnik bit default 0, -- brigadnik 1, normal 0
+odchod bit default 0 -- pri delete 1
+);
+
+select * from zamestnanec
+
+insert into zamestnanec(prijmeni, plat) values('jelinek', 0);
+insert into zamestnanec(prijmeni, plat) values('raichl',0);
+-- trigger
+go
+alter trigger brigadnik
+on zamestnanec after insert
+as
+begin
+	-- select * from inserted
+	-- select* from deleted
+
+	update zamestnanec set brigadnik = 1, plat = 15000
+	where zamestnanec.id = (select id from inserted)
+
+end
+go
+
+-- nastaveni odchodu pri smazani zam se nastavi obchod na 1
+-- trigger instead of delete
+-- spusteni prikazem
+
+delete from zamestnanec where prijmeni ='papuca';
+
+go
+create trigger odchod
+on zamestnanec instead of delete
+as
+begin
+	update zamestnanec set odchod=1
+	where zamestnanec.id = (select id from deleted)
+end
+go
+
+-- prehled radnych zam
+select * from zamestnanec where odchod != 1;
+-- prehled zam kteri odesl
+select * from zamestnanec where odchod = 1
+-- seznam brig
+select * from zamestnanec where brigadnik = 1;
+-- celkem pocet
+select count(*) celkem_zam,
+(select count(*) from zamestnanec where brigadnik = 1) celkem_brig,
+(select count(*) from zamestnanec where odchod != 1) aktivni_zam
+from zamestnanec
+
+create database Utulky
+use Utulky
+
+create table utulek_info(
+id int primary key identity(1,1),
+nazev varchar(20) not null,
+aktualni_pocet_zvirat int not null
+)
+
+create table zvire(
+id int primary key identity(1,1),
+utulek_id int foreign key references utulek_info(id),
+jmeno varchar(20) not null,
+druh varchar(20) not null, 
+stav varchar(20) check (stav in ('V poradku', 'V leceni', 'Kriticky')) not null
+)
+
+create table log_zdravotni_stav(
+id int primary key identity(1,1),
+zvire_id int foreign key references zvire(id),
+stary_stav varchar(20) check (stary_stav in ('V poradku', 'V leceni', 'Kriticky')) not null,
+novy_stav varchar(20) check (novy_stav in ('V poradku', 'V leceni', 'Kriticky')) not null,
+datum_zmeny date
+)
+
+go
+create trigger pridat_zvire
+on zvire after insert
+as 
+begin
+	update utulek_info set aktualni_pocet_zvirat +=1 
+	where utulek_info.id = (select utulek_id from inserted)
+end
+go
+
+go
+create trigger odebrat_zvire
+on zvire after delete
+as 
+begin
+	update utulek_info set aktualni_pocet_zvirat -=1 
+	where utulek_info.id = (select utulek_id from deleted)
+end
+go
+
+insert into zvire(utulek_id, jmeno, druh, stav)
+values (1,'punta','pes','V poradku')
+
+update utulek_info set aktualni_pocet_zvirat = 0 where nazev = 'smichov'
+
+select * from utulek_info
+
+delete from zvire where jmeno = 'punta'
+
+go
+create trigger zmena_stavu
+on zvire after update
+as
+begin
+	declare @zvire_id int = (select id from deleted)
+	declare @stary_stav varchar(20) = (select stav from deleted)
+	declare @novy_stav varchar(20) = (select stav from inserted)
+
+	if(@stary_stav != @novy_stav)
+	begin
+	 insert into log_zdravotni_stav (zvire_id,stary_stav, novy_stav, datum_zmeny)
+	 values (@zvire_id, @stary_stav, @novy_stav,GETDATE())
+	 end
+end
+go
+
+select * from log_zdravotni_stav
+
+update zvire set stav = 'V poradku'
+
 select*from email
