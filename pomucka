@@ -390,5 +390,3 @@ go
 select * from log_zdravotni_stav
 
 update zvire set stav = 'V poradku'
-
-select*from email
